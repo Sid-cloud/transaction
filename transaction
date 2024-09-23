@@ -1,0 +1,27 @@
+# models.py
+from django.db import models, transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+class MyModel(models.Model):
+    name = models.CharField(max_length=50)
+
+class Log(models.Model):
+    message = models.CharField(max_length=100)
+
+@receiver(post_save, sender=MyModel)
+def my_model_saved(sender, instance, **kwargs):
+    Log.objects.create(message="Signal handler executed.")
+
+# Now wrap the save operation in a transaction and roll it back:
+if __name__ == "__main__":
+    try:
+        with transaction.atomic():
+            my_instance = MyModel(name="Test")
+            my_instance.save()
+            raise Exception("Rolling back transaction")
+    except:
+        pass
+    
+    # Check if log entry was created
+    print(Log.objects.count())  # Should print 0 if signal was rolled back with the transaction
